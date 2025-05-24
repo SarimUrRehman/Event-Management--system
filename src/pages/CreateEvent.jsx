@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Input from '../components/Input'
 import Button from '../components/Button'
+import BoothManagement from '../components/BoothManagement'
 
 export default function CreateEvent() {
   const { user, isExhibitor } = useAuth()
@@ -16,7 +17,8 @@ export default function CreateEvent() {
     category: '',
     capacity: '',
     price: '',
-    image: null
+    image: null,
+    selectedBooths: []
   })
   const [error, setError] = useState('')
 
@@ -36,13 +38,22 @@ export default function CreateEvent() {
     }
   }
 
+  const handleBoothsUpdate = (selectedBooths) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedBooths
+    }));
+    // Show a success message or update UI to reflect the selection
+    console.log('Selected Booths:', selectedBooths);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
     try {
       // Validation
-      if (!formData.title || !formData.description || !formData.date || !formData.time) {
+      if (!formData.title || !formData.description || !formData.date || !formData.time || !formData.location) {
         setError('Please fill in all required fields')
         return
       }
@@ -56,7 +67,12 @@ export default function CreateEvent() {
         companyName: user.companyName,
         createdAt: new Date().toISOString(),
         attendees: [],
-        datetime: new Date(formData.date + 'T' + formData.time).toISOString()
+        datetime: new Date(formData.date + 'T' + formData.time).toISOString(),
+        booths: formData.selectedBooths.map(boothId => ({
+          id: boothId,
+          status: 'reserved',
+          reservedAt: new Date().toISOString()
+        }))
       }
 
       // Save to localStorage (in a real app, this would be an API call)
@@ -79,7 +95,8 @@ export default function CreateEvent() {
 
       navigate('/exhibitor-dashboard')
     } catch (err) {
-      setError('Failed to create event')
+      console.error('Error creating event:', err);
+      setError('Failed to create event. Please try again.')
     }
   }
 
@@ -93,33 +110,36 @@ export default function CreateEvent() {
             <div className="bg-red-100 text-red-600 p-3 rounded">{error}</div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input
-              label="Event Title"
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              required
-            />
-
-            <div>
-              <label className="block font-medium mb-1">Category</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                className="w-full border p-2 rounded focus:ring-2 focus:ring-primary-500"
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Event Title"
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 required
-              >
-                <option value="">Select Category</option>
-                <option value="conference">Conference</option>
-                <option value="workshop">Workshop</option>
-                <option value="seminar">Seminar</option>
-                <option value="expo">Expo</option>
-                <option value="networking">Networking</option>
-              </select>
+              />
+
+              <div>
+                <label className="block font-medium mb-1">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                  className="w-full border p-2 rounded focus:ring-2 focus:ring-primary-500"
+                  required
+                >
+                  <option value="">Select Category</option>
+                  <option value="conference">Conference</option>
+                  <option value="workshop">Workshop</option>
+                  <option value="seminar">Seminar</option>
+                  <option value="expo">Expo</option>
+                  <option value="networking">Networking</option>
+                </select>
+              </div>
             </div>
 
-            <div className="md:col-span-2">
+            {/* Description */}
+            <div>
               <label className="block font-medium mb-1">Description</label>
               <textarea
                 value={formData.description}
@@ -129,63 +149,86 @@ export default function CreateEvent() {
               />
             </div>
 
-            <Input
-              label="Date"
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-              min={new Date().toISOString().split('T')[0]}
-              required
-            />
-
-            <Input
-              label="Time"
-              type="time"
-              value={formData.time}
-              onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
-              required
-            />
-
-            <Input
-              label="Location"
-              type="text"
-              value={formData.location}
-              onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-              required
-            />
-
-            <Input
-              label="Capacity"
-              type="number"
-              value={formData.capacity}
-              onChange={(e) => setFormData(prev => ({ ...prev, capacity: e.target.value }))}
-              min="1"
-              required
-            />
-
-            <Input
-              label="Price ($)"
-              type="number"
-              value={formData.price}
-              onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-              min="0"
-              step="0.01"
-              required
-            />
-
-            <div className="md:col-span-2">
-              <label className="block font-medium mb-1">Event Image</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="w-full"
+            {/* Date and Time */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                min={new Date().toISOString().split('T')[0]}
+                required
+              />
+              <Input
+                label="Time"
+                type="time"
+                value={formData.time}
+                onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
                 required
               />
             </div>
+
+            {/* Location and Capacity */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Location"
+                type="text"
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                required
+              />
+              <Input
+                label="Capacity"
+                type="number"
+                value={formData.capacity}
+                onChange={(e) => setFormData(prev => ({ ...prev, capacity: e.target.value }))}
+                min="1"
+                required
+              />
+            </div>
+
+            {/* Price and Image */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Price ($)"
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                min="0"
+                step="0.01"
+                required
+              />
+              <div>
+                <label className="block font-medium mb-1">Event Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Booth Selection Section */}
+            <div className="mt-4">
+              <h3 className="text-xl font-semibold mb-4">Booth Selection</h3>
+              <div className="bg-white p-6 rounded-lg border border-gray-200">
+                <BoothManagement 
+                  eventId={formData.id}
+                  selectedBooths={formData.selectedBooths}
+                  onBoothsUpdate={handleBoothsUpdate}
+                />
+              </div>
+              {formData.selectedBooths.length > 0 && (
+                <div className="mt-2 text-sm text-gray-600">
+                  {formData.selectedBooths.length} booth(s) selected
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex justify-end space-x-4">
+          <div className="flex justify-end space-x-4 mt-6">
             <Button
               type="button"
               onClick={() => navigate('/exhibitor-dashboard')}
